@@ -162,32 +162,30 @@ async function startBot() {
         for (const msg of messages) {
             if (!msg.message) continue;
             if (msg.key.fromMe) continue;
-            if (msg.key.remoteJid === 'status@broadcast') {
-                await autoViewAndLikeStatus(msg);
-            }
-
+    
             const from = msg.key.remoteJid;
+    
+            // Handle status — skip everything else
+            if (from === 'status@broadcast') {
+                await autoViewAndLikeStatus(sock, msg);
+                continue;
+            }
+    
             const isGroup = from.endsWith('@g.us');
             const isChannel = from.endsWith('@newsletter');
-
-// Baileys 7 — use senderPn for real phone number, fallback to participant/remoteJid
-             const senderPn = msg.key.senderPn; // real phone number JID in Baileys 7
-             const senderJid = isGroup 
-             ? (msg.key.participant || msg.key.senderPn)
-             : (senderPn || from);
-             const senderNumber = senderJid
-             ?.replace('@s.whatsapp.net', '')
-             ?.replace('@lid', '') || 'Unknown';
-
-             const senderName = msg.pushName || 'Unknown';
-             const isOwner = senderNumber === OWNER_NUMBER;
-             const body =
+    
+            const senderNumber = isGroup
+                ? msg.key.participant?.split('@')[0].split(':')[0]
+                : from.split('@')[0].split(':')[0];
+    
+            const senderName = msg.pushName || 'Unknown';
+            const isOwner = senderNumber === OWNER_NUMBER;
+            const body =
                 msg.message?.conversation ||
                 msg.message?.extendedTextMessage?.text ||
                 msg.message?.imageMessage?.caption ||
                 msg.message?.videoMessage?.caption || '';
     
-            // Log every incoming message
             console.log(`─────────────────────────────────`);
             console.log(`📨 From    : ${isGroup ? 'Group' : isChannel ? 'Channel' : 'DM'}`);
             console.log(`👤 Name    : ${senderName}`);
