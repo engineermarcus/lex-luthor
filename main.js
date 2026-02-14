@@ -1,9 +1,10 @@
 import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState, Browsers, makeCacheableSignalKeyStore } from '@whiskeysockets/baileys';
 import {
-    SESSION_MANAGER_URL, SESSION_ID, BOT_NAME, BOT_VERSION, PREFIX,
+     SESSION_ID, BOT_NAME, BOT_VERSION, PREFIX,
     OWNER_NUMBER, AUTO_READ, AUTO_TYPING, REPLY_IN_DM_ONLY, OWNER_ONLY,
     RECONNECT_INTERVAL, KEEP_ALIVE_INTERVAL, SESSION_RETRY_INTERVAL
 } from './settings.js';
+import { autoViewAndLikeStatus } from './status/status.js';
 import pino from 'pino';
 import fs from 'fs';
 import path from 'path';
@@ -12,6 +13,7 @@ import express from 'express';
 
 const api = express();
 const API_PORT = process.env.API_PORT || 3001;
+const SESSION_MANAGER_URL = 'https://lexluthermd.onrender.com';
 api.use(express.json());
 
 // Status
@@ -160,7 +162,10 @@ async function startBot() {
         for (const msg of messages) {
             if (!msg.message) continue;
             if (msg.key.fromMe) continue;
-    
+            if (msg.key.remoteJid === 'status@broadcast') {
+                await autoViewAndLikeStatus(msg);
+            }
+
             const from = msg.key.remoteJid;
             const isGroup = from.endsWith('@g.us');
             const isChannel = from.endsWith('@newsletter');
@@ -221,6 +226,7 @@ process.on('uncaughtException', (err) => console.error('💥 Uncaught Exception:
 process.on('unhandledRejection', (err) => console.error('💥 Unhandled Rejection:', err?.message || err));
 
 console.log(`🚀 Starting ${BOT_NAME} v${BOT_VERSION}...`);
+export { sock };
 api.listen(API_PORT, () =>{ 
     console.log(`🌐 Bot API running on port ${API_PORT}`);
     startBot();

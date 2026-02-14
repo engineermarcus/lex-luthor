@@ -1,5 +1,4 @@
-// ─── Session Manager ───────────────────────────────────────────────────────────
-export const SESSION_MANAGER_URL = 'http://localhost:3000';
+
 export const SESSION_ID = 'paste-your-session-id-here'; // e.g. "apple-river-stone"
 
 // ─── Bot Identity ──────────────────────────────────────────────────────────────

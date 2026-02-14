@@ -1,6 +1,10 @@
 # LEX LUTHER MD BOT 
 
 This is the latest whatsappbot from Neiman Tech @2026
+### GET SESSION ID 
+[![Website](https://img.shields.io/website?url=https%3A%2F%2Flexluthermd.onrender.com&style=for-the-badge&logo=render&label=LexLutherMD&color=brightgreen)](https://lexluthermd.onrender.com)
+
+
 ## FORK
 
 ## KEY FEATURES
