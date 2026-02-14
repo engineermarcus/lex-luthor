@@ -118,11 +118,69 @@ async function toImage(sock, msg, from) {
     }
 }
 
-// ─── TTS ───────────────────────────────────────────────────────────────────────
+// Language name to code mapping
+const LANGUAGE_CODES = {
+    swahili: 'sw', english: 'en', french: 'fr', spanish: 'es',
+    german: 'de', portuguese: 'pt', arabic: 'ar', chinese: 'zh',
+    japanese: 'ja', korean: 'ko', italian: 'it', russian: 'ru',
+    hindi: 'hi', dutch: 'nl', turkish: 'tr', polish: 'pl',
+    swedish: 'sv', norwegian: 'no', danish: 'da', finnish: 'fi',
+    greek: 'el', hebrew: 'he', thai: 'th', vietnamese: 'vi',
+    indonesian: 'id', malay: 'ms', filipino: 'tl', yoruba: 'yo',
+    igbo: 'ig', hausa: 'ha', amharic: 'am', somali: 'so',
+    zulu: 'zu', xhosa: 'xh', shona: 'sn', afrikaans: 'af'
+};
 
+export const languageCommands = Object.keys(LANGUAGE_CODES);
+
+async function translate(sock, msg, from, command, args) {
+    const lang = LANGUAGE_CODES[command.toLowerCase()];
+    if (!lang) return;
+
+    // Option 1: text written directly after command
+    // Option 2: reply to a message
+    let text = args.join(' ');
+
+    if (!text) {
+        const quoted = getQuotedMessage(msg);
+        text = quoted?.conversation ||
+               quoted?.extendedTextMessage?.text ||
+               quoted?.imageMessage?.caption ||
+               quoted?.videoMessage?.caption || '';
+    }
+
+    if (!text) return await sock.sendMessage(from, {
+        text: `❌ Write text after the command or reply to a message\nExample: .${command} how are you`
+    }, { quoted: msg });
+
+    try {
+        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${lang}&dt=t&q=${encodeURIComponent(text)}`;
+        const { data } = await axios.get(url);
+        const translated = data[0].map(x => x[0]).join('');
+        await sock.sendMessage(from, {
+            text: `🌐 *${command.charAt(0).toUpperCase() + command.slice(1)}:*\n\n${translated}`
+        }, { quoted: msg });
+    } catch (err) {
+        await sock.sendMessage(from, { text: `❌ Translation failed: ${err.message}` }, { quoted: msg });
+    }
+}
+//-----------TTS------------------------------------------------------------------------------
 async function tts(sock, msg, from, args) {
-    const text = args.join(' ');
-    if (!text) return await sock.sendMessage(from, { text: '❌ Usage: .tts <text>' }, { quoted: msg });
+    // Option 1: text written directly after command
+    // Option 2: reply to a message
+    let text = args.join(' ');
+
+    if (!text) {
+        const quoted = getQuotedMessage(msg);
+        text = quoted?.conversation ||
+               quoted?.extendedTextMessage?.text ||
+               quoted?.imageMessage?.caption ||
+               quoted?.videoMessage?.caption || '';
+    }
+
+    if (!text) return await sock.sendMessage(from, {
+        text: '❌ Write text after the command or reply to a message\nExample: .tts hello world'
+    }, { quoted: msg });
 
     try {
         const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=en&client=tw-ob`;
@@ -134,34 +192,6 @@ async function tts(sock, msg, from, args) {
         }, { quoted: msg });
     } catch (err) {
         await sock.sendMessage(from, { text: `❌ TTS failed: ${err.message}` }, { quoted: msg });
-    }
-}
-
-// ─── Translate ─────────────────────────────────────────────────────────────────
-
-async function translate(sock, msg, from, args) {
-    // Usage: .translate [lang] <text> or reply to message
-    // e.g. .translate es Hello world
-    if (!args.length) return await sock.sendMessage(from, { text: '❌ Usage: .translate <lang> <text>\nExample: .translate es Hello world' }, { quoted: msg });
-
-    const lang = args[0].length <= 3 ? args.shift() : 'en';
-    let text = args.join(' ');
-
-    // If no text, check quoted message
-    if (!text) {
-        const quoted = getQuotedMessage(msg);
-        text = quoted?.conversation || quoted?.extendedTextMessage?.text || '';
-    }
-
-    if (!text) return await sock.sendMessage(from, { text: '❌ No text to translate' }, { quoted: msg });
-
-    try {
-        const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${lang}&dt=t&q=${encodeURIComponent(text)}`;
-        const { data } = await axios.get(url);
-        const translated = data[0].map(x => x[0]).join('');
-        await sock.sendMessage(from, { text: `🌐 *Translated to ${lang}:*\n\n${translated}` }, { quoted: msg });
-    } catch (err) {
-        await sock.sendMessage(from, { text: `❌ Translation failed: ${err.message}` }, { quoted: msg });
     }
 }
 
@@ -180,11 +210,12 @@ export async function handleUtility(sock, msg, from, command, args) {
         case 'tts':
             await tts(sock, msg, from, args);
             break;
-        case 'translate':
-        case 'tr':
-            await translate(sock, msg, from, args);
+        default:
+            if (languageCommands.includes(command)) {
+                await translate(sock, msg, from, command, args);
+            }
             break;
     }
 }
 
-export const utilityCommands = ['sticker', 's', 'toimg', 'toimage', 'tts', 'translate', 'tr'];
+export const utilityCommands = ['sticker', 's', 'toimg', 'toimage', 'tts', ...languageCommands];
