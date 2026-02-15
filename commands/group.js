@@ -1,4 +1,4 @@
-// group.js
+// group.js - OPTIMIZED VERSION
 import { 
     OWNER_NUMBER,
     WELCOME, GOODBYE,
@@ -13,6 +13,9 @@ const mutedUsers = new Map();
 const muteAll = new Map();
 const CACHE_FILE = './temp.txt';
 
+// In-memory cache for group metadata to avoid repeated API calls
+const groupMetaCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // ── Message Cache ──────────────────────────────────────────────────────────
 
@@ -30,6 +33,7 @@ function writeCache(cache) {
         console.error('❌ Cache write error:', err.message);
     }
 }
+
 export function cacheMessage(msg) {
     if (!msg.message || msg.key.fromMe) return;
     const body =
@@ -52,11 +56,37 @@ export function cacheMessage(msg) {
 
     writeCache(cache);
 }
+
+// ── Optimized Metadata Fetching ───────────────────────────────────────────
+
+async function getGroupMeta(sock, groupJid) {
+    const cached = groupMetaCache.get(groupJid);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        return cached.meta;
+    }
+
+    try {
+        const meta = await sock.groupMetadata(groupJid);
+        groupMetaCache.set(groupJid, { meta, timestamp: Date.now() });
+        return meta;
+    } catch (err) {
+        console.error('❌ getGroupMeta error:', err.message);
+        return null;
+    }
+}
+
+// Clear cache for a specific group (call this when group updates)
+export function clearGroupCache(groupJid) {
+    groupMetaCache.delete(groupJid);
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 async function isBotAdmin(sock, groupJid) {
     try {
-        const meta = await sock.groupMetadata(groupJid);
+        const meta = await getGroupMeta(sock, groupJid);
+        if (!meta) return false;
+
         const botLid = sock.authState.creds.me?.lid?.split(':')[0].split('@')[0];
         const botPhone = sock.user.id.split(':')[0].split('@')[0];
         const bot = meta.participants.find(p => {
@@ -72,7 +102,9 @@ async function isBotAdmin(sock, groupJid) {
 
 async function isSenderAdmin(sock, groupJid, senderJid) {
     try {
-        const meta = await sock.groupMetadata(groupJid);
+        const meta = await getGroupMeta(sock, groupJid);
+        if (!meta) return false;
+
         const senderNumber = senderJid.split(':')[0].split('@')[0];
         const sender = meta.participants.find(p => {
             const pNumber = p.id.split(':')[0].split('@')[0];
@@ -100,9 +132,11 @@ function getBody(msg) {
 
 // ── Welcome & Goodbye ──────────────────────────────────────────────────────
 
-// In your group.js - update the function to match official structure
 export async function handleGroupParticipantsUpdate(sock, update) {
     const { id, participants, action } = update;
+    
+    // Clear cache when participants change
+    clearGroupCache(id);
 
     if (action === 'add' && WELCOME) {
         for (const participant of participants) {
@@ -128,6 +162,7 @@ export async function handleGroupParticipantsUpdate(sock, update) {
         }
     }
 }
+
 // ── Anti Delete ────────────────────────────────────────────────────────────
 
 export async function handleAntiDelete(sock, msg) {
@@ -154,6 +189,7 @@ export async function handleAntiDelete(sock, msg) {
     delete cache[deletedKey.id];
     writeCache(cache);
 }
+
 // ── Anti Link ─────────────────────────────────────────────────────────────
 
 export async function handleAntiLink(sock, msg) {
@@ -201,10 +237,6 @@ export function registerAntiDelete(sock) {
         const ownerJid = `${OWNER_NUMBER}@s.whatsapp.net`;
         const keys = item.keys || [];
 
-    
-        console.log('🗑️ messages.delete fired:', JSON.stringify(item));
-    
-
         for (const key of keys) {
             if (key.fromMe) continue;
 
@@ -227,6 +259,7 @@ export function registerAntiDelete(sock) {
         }
     });
 }
+
 // ── Mute enforcement ───────────────────────────────────────────────────────
 
 export async function enforceMute(sock, msg) {
@@ -237,26 +270,29 @@ export async function enforceMute(sock, msg) {
     const sender = msg.key.participant;
     if (!sender) return;
 
+    // Check mute status first (no API call needed)
+    const groupMuted = muteAll.get(from);
+    const userMuted = mutedUsers.has(from) && mutedUsers.get(from).has(sender);
+
+    if (!groupMuted && !userMuted) return; // Skip if not muted
+
+    // Only check admin status if we need to delete
     const botIsAdmin = await isBotAdmin(sock, from);
 
-    if (muteAll.get(from)) {
-        if (botIsAdmin) {
-            try {
-                await sock.sendMessage(from, { delete: msg.key });
-            } catch (err) {
-                console.error('❌ MuteAll delete failed:', err.message);
-            }
+    if (groupMuted && botIsAdmin) {
+        try {
+            await sock.sendMessage(from, { delete: msg.key });
+        } catch (err) {
+            console.error('❌ MuteAll delete failed:', err.message);
         }
         return;
     }
 
-    if (mutedUsers.has(from) && mutedUsers.get(from).has(sender)) {
-        if (botIsAdmin) {
-            try {
-                await sock.sendMessage(from, { delete: msg.key });
-            } catch (err) {
-                console.error('❌ Mute delete failed:', err.message);
-            }
+    if (userMuted && botIsAdmin) {
+        try {
+            await sock.sendMessage(from, { delete: msg.key });
+        } catch (err) {
+            console.error('❌ Mute delete failed:', err.message);
         }
     }
 }
@@ -290,7 +326,9 @@ export async function handleGroupCommand(sock, msg, command, args) {
 
         case 'stalkall': {
             try {
-                const meta = await sock.groupMetadata(from);
+                const meta = await getGroupMeta(sock, from);
+                if (!meta) break;
+
                 const botLid = sock.authState.creds.me?.lid?.split(':')[0].split('@')[0];
                 const botPhone = sock.user.id.split(':')[0].split('@')[0];
                 const members = meta.participants.filter(p => {
