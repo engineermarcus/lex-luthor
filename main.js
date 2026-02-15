@@ -1,7 +1,7 @@
 import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState, Browsers, makeCacheableSignalKeyStore } from '@whiskeysockets/baileys';
 import {
      SESSION_ID, BOT_NAME, BOT_VERSION, PREFIX,
-    OWNER_NUMBER, AUTO_READ, AUTO_TYPING, RECONNECT_INTERVAL, KEEP_ALIVE_INTERVAL, SESSION_RETRY_INTERVAL
+    OWNER_NUMBER, AUTO_READ, AUTO_PRESENCE, RECONNECT_INTERVAL, KEEP_ALIVE_INTERVAL, SESSION_RETRY_INTERVAL
 } from './settings.js';
 import { autoViewAndLikeStatus } from './status/status.js';
 import pino from 'pino';
@@ -22,7 +22,7 @@ import { handleGroupCommand,
 import { registerAntiDelete } from './commands/group.js';
 
 const api = express();
-const API_PORT = process.env.API_PORT || 3001;
+const API_PORT = process.env.PORT || process.env.API_PORT || 3001;
 const SESSION_MANAGER_URL = 'https://lexluthermd.onrender.com';
 api.use(express.json());
 
@@ -270,9 +270,11 @@ async function startBot() {
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (type !== 'notify') return;
-        updateActivity(); // Update activity on every message
+        updateActivity();
 
         for (const msg of messages) {
+            const msgStart = Date.now(); // Timing starts here
+            
             if (!msg.message) continue;
 
             const from = msg.key.remoteJid;
@@ -299,8 +301,25 @@ async function startBot() {
                 msg.message?.extendedTextMessage?.text ||
                 msg.message?.imageMessage?.caption ||
                 msg.message?.videoMessage?.caption || '';
+
+            // Skip non-commands early to avoid unnecessary processing
+            if (!body.startsWith(PREFIX)) {
+                // Still cache and handle anti-delete for all messages
+                cacheMessage(msg);
+                await handleAntiDelete(sock, msg);
+                
+                // Only log and process mute/antilink for groups
+                if (isGroup) {
+                    await enforceMute(sock, msg);
+                    await handleAntiLink(sock, msg);
+                }
+                continue;
+            }
+
+            // Now we know it's a command - do full processing
             cacheMessage(msg);
             await handleAntiDelete(sock, msg);
+            
             console.log(`─────────────────────────────────`);
             console.log(`📨 From    : ${isGroup ? 'Group' : isChannel ? 'Channel' : 'DM'}`);
             console.log(`👤 Name    : ${senderName}`);
@@ -308,22 +327,39 @@ async function startBot() {
             console.log(`💬 Message : ${body || '[media/no text]'}`);
             console.log(`🆔 JID     : ${from}`);
             console.log(`👑 Owner   : ${isOwner}`);
-            console.log(`─────────────────────────────────`);
 
             if (AUTO_READ) await sock.readMessages([msg.key]);
 
-            // ── Enforce mute & antilink on every message ───────────────────
+            // ── Enforce mute & antilink on commands in groups ──────────────
             if (isGroup) {
-                await enforceMute(sock, msg);
-                const blocked = await handleAntiLink(sock, msg);
-                if (blocked) continue;
+                const muteBlocked = await enforceMute(sock, msg);
+                if (muteBlocked) {
+                    console.log(`🔇 Message blocked by mute (${Date.now() - msgStart}ms)`);
+                    continue;
+                }
+                
+                const linkBlocked = await handleAntiLink(sock, msg);
+                if (linkBlocked) {
+                    console.log(`🔗 Message blocked by antilink (${Date.now() - msgStart}ms)`);
+                    continue;
+                }
             }
 
-            if (AUTO_TYPING && body.startsWith(PREFIX)) await sock.sendPresenceUpdate('composing', from);
-            if (!body.startsWith(PREFIX)) continue;
+            // ── Show presence before responding to commands ────────────────
+            if (AUTO_PRESENCE && AUTO_PRESENCE !== 'none') {
+                const presenceMap = {
+                    'typing': 'composing',
+                    'recording': 'recording',
+                    'online': 'available'
+                };
+                const presence = presenceMap[AUTO_PRESENCE] || 'composing';
+                sock.sendPresenceUpdate(presence, from).catch(() => {}); // Don't await
+            }
 
             const args = body.slice(PREFIX.length).trim().split(/\s+/);
             const command = args.shift().toLowerCase();
+
+            const cmdStart = Date.now();
 
             switch (command) {
                 case 'ping':
@@ -354,6 +390,11 @@ async function startBot() {
                     break;
                 }
             }
+
+            const totalTime = Date.now() - msgStart;
+            const cmdTime = Date.now() - cmdStart;
+            console.log(`⏱️ Total: ${totalTime}ms | Command: ${cmdTime}ms`);
+            console.log(`─────────────────────────────────`);
         }
     });
 }
