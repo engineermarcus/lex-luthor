@@ -4,16 +4,18 @@
   "main": "main.js",
   "type": "module",
   "scripts": {
-    "luther": "node main.js",
+    "luthor": "node main.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Look who has come to deploy <p align=\"center\">   <img src=\"https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExazE4Y2swMjl0ZGR3d3hxbmp0cHFwMHF2dWtveWxkZ2c1MGd6cHYxOCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/PrVAwWYQl1JPG/giphy.gif\" width=\"40%\" /> </p>",
   "dependencies": {
     "@whiskeysockets/baileys": "^7.0.0-rc.9",
     "axios": "^1.13.5",
-    "express": "^5.2.1"
-  }
+    "express": "^5.2.1",
+    "dotenv": "^17.3.1"
+  },
+  "devDependencies": {}
 }
