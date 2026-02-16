@@ -1,7 +1,6 @@
 // commands/media.js
 import yts from 'yt-search';
 import { downloadYouTube } from '../youtube/download.js';
-//import { OWNER_NUMBER } from '../settings.js';
 
 // .play - Audio with thumbnail
 export async function playCommand(sock, msg, args) {
@@ -19,7 +18,6 @@ export async function playCommand(sock, msg, args) {
     });
     
     try {
-        // Search
         const { videos } = await yts(query);
         const video = videos[0];
         
@@ -30,7 +28,6 @@ export async function playCommand(sock, msg, args) {
             return;
         }
         
-        // Download audio
         const result = await downloadYouTube(video.url, 'mp3');
         
         if (!result.success) {
@@ -40,23 +37,21 @@ export async function playCommand(sock, msg, args) {
             return;
         }
         
-        // Send audio with thumbnail
-        // In playCommand:
-await sock.sendMessage(msg.key.remoteJid, {
-    audio: { url: result.file },
-    mimetype: 'audio/mpeg',
-    ptt: false,
-    contextInfo: {
-        externalAdReply: {
-            title: video.title,
-            body: `${video.author.name} • ${video.timestamp}`,
-            thumbnailUrl: video.thumbnail,  // Just use the URL directly
-            mediaType: 2,
-            mediaUrl: video.url,
-            sourceUrl: video.url
-        }
-    }
-});
+        await sock.sendMessage(msg.key.remoteJid, {
+            audio: { url: result.file },
+            mimetype: 'audio/mpeg',
+            ptt: false,
+            contextInfo: {
+                externalAdReply: {
+                    title: video.title,
+                    body: `${video.author.name} • ${video.timestamp}`,
+                    thumbnailUrl: video.thumbnail,
+                    mediaType: 2,
+                    mediaUrl: video.url,
+                    sourceUrl: video.url
+                }
+            }
+        });
         
     } catch (error) {
         console.error('Play command error:', error);
@@ -82,7 +77,6 @@ export async function audioCommand(sock, msg, args) {
     });
     
     try {
-        // Search
         const { videos } = await yts(query);
         const url = videos[0]?.url;
         
@@ -93,7 +87,6 @@ export async function audioCommand(sock, msg, args) {
             return;
         }
         
-        // Download audio
         const result = await downloadYouTube(url, 'mp3');
         
         if (!result.success) {
@@ -103,7 +96,6 @@ export async function audioCommand(sock, msg, args) {
             return;
         }
         
-        // Send plain audio
         await sock.sendMessage(msg.key.remoteJid, {
             audio: { url: result.file },
             mimetype: 'audio/mpeg'
@@ -133,7 +125,6 @@ export async function videoCommand(sock, msg, args) {
     });
     
     try {
-        // Search
         const { videos } = await yts(query);
         const video = videos[0];
         
@@ -143,10 +134,10 @@ export async function videoCommand(sock, msg, args) {
             });
             return;
         }
-        
-        // Download video
-        const result = await downloadYouTube(video.url, 'mp4');
-        
+
+        // Download in WhatsApp-compatible format (no post-conversion needed)
+        const result = await downloadYouTube(video.url, 'whatsapp');
+
         if (!result.success) {
             await sock.sendMessage(msg.key.remoteJid, { 
                 text: `❌ Download failed: ${result.error}` 
@@ -154,7 +145,6 @@ export async function videoCommand(sock, msg, args) {
             return;
         }
         
-        // Send video with caption
         await sock.sendMessage(msg.key.remoteJid, {
             video: { url: result.file },
             caption: `🎬 *${video.title}*\n\n👤 ${video.author.name}\n⏱️ ${video.timestamp}`,

@@ -22,35 +22,42 @@ if (!fs.existsSync(DOWNLOAD_DIR)) {
 export async function downloadYouTube(url, format = 'mp4') {
     try {
         // Validate format
-        if (!['mp4', 'mp3'].includes(format)) {
-            return { success: false, error: 'Invalid format. Use "mp4" or "mp3"' };
+        if (!['mp4', 'mp3', 'whatsapp'].includes(format)) {
+            return { success: false, error: 'Invalid format. Use "mp4", "mp3", or "whatsapp"' };
         }
 
-        // Check if cookies file exists
-        if (!fs.existsSync(COOKIES_FILE)) {
-            return { success: false, error: 'cookies.txt not found. Please add YouTube cookies.' };
-        }
-
-        // Build yt-dlp command
         const timestamp = Date.now();
         const outputTemplate = path.join(DOWNLOAD_DIR, `%(title)s_${timestamp}.%(ext)s`);
 
         let command;
         if (format === 'mp3') {
-            // Audio only - extract MP3
+            // Audio
             command = [
                 'yt-dlp',
                 '--cookies', COOKIES_FILE,
                 '--js-runtimes', 'node',
                 '--remote-components', 'ejs:github',
-                '-x', // Extract audio
+                '-x',
                 '--audio-format', 'mp3',
-                '--audio-quality', '0', // Best quality
+                '--audio-quality', '0',
+                '-o', `"${outputTemplate}"`,
+                `"${url}"`
+            ].join(' ');
+        } else if (format === 'whatsapp') {
+            // WhatsApp-compatible video (downloaded already converted)
+            command = [
+                'yt-dlp',
+                '--cookies', COOKIES_FILE,
+                '--js-runtimes', 'node',
+                '--remote-components', 'ejs:github',
+                '-f', '"bestvideo[height<=720][ext=mp4]+bestaudio[ext=m4a]/best[height<=720]"',
+                '--merge-output-format', 'mp4',
+                '--postprocessor-args', '"-c:v libx264 -preset ultrafast -crf 28 -maxrate 2M -bufsize 2M -c:a aac -b:a 128k -movflags +faststart"',
                 '-o', `"${outputTemplate}"`,
                 `"${url}"`
             ].join(' ');
         } else {
-            // Video - best quality MP4
+            // Best quality video
             command = [
                 'yt-dlp',
                 '--cookies', COOKIES_FILE,
@@ -62,7 +69,6 @@ export async function downloadYouTube(url, format = 'mp4') {
                 `"${url}"`
             ].join(' ');
         }
-
         console.log(`📥 Downloading ${format.toUpperCase()}: ${url}`);
 
         // Execute download
