@@ -22,9 +22,9 @@ export const AUTO_VIEW_STATUS = process.env.AUTO_VIEW_STATUS || true;
 export const AUTO_LIKE_STATUS = process.env.AUTO_LIKE_STATUS || true;
 export const WELCOME = process.env.WELCOME || true;
 export const GOODBYE = process.env.GOODBYE || true;
-export const WELCOME_MESSAGE = process.env.WELCOME_MESSAGE || '👋 Welcome {name}, I hope we are happy to have you here';
-export const GOODBYE_MESSAGE = process.env.GOODBYE_MESSAGE || '👋 Goodbye {name} motherfucker, you are a weak ass soldier, I hope they will remember you';
-export const STALK_MESSAGE = process.env.STALK_MESSAGE || 'Hello 👋, How is your day going ?'
+export const WELCOME_MESSAGE = process.env.WELCOME_MESSAGE || '👀 *{name}* just walked in. The group will never be the same.';
+export const GOODBYE_MESSAGE = process.env.GOODBYE_MESSAGE || '🚪 *{name}* left. Noted. Moving on.';
+export const STALK_MESSAGE = process.env.STALK_MESSAGE || "Hey 👋 don't act surprised, you knew this day would come.";
 export const ANTI_DELETE = process.env.ANTI_DELETE || true;
 export const ANTI_LINK = process.env.ANTI_LINK || true;
 
