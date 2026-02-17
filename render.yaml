@@ -1,9 +1,8 @@
 services:
-  - type: web
+  - type: worker
     name: lexluthor
     env: docker
-    plan: free
-    healthCheckPath: /status
+    plan: starter
     envVars:
       - key: SESSION_ID
         sync: false
@@ -23,4 +22,6 @@ services:
         value: true
       - key: AUTO_LIKE_STATUS
         value: true
+      - key: COOKIE_CONTENT
+        sync: false
     autoDeploy: true
