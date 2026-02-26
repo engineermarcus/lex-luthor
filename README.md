@@ -1,7 +1,7 @@
 # LEX LUTHOR MD
 
 <p align="center">
-  <img src="https://files.catbox.moe/oq48rd.jpg" width="40%" />
+  <img src="https://files.catbox.moe/oq48rd.jpg" width="70%" />
 </p>
 
 **Make sure you fork and star please**
