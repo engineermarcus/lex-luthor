@@ -12,7 +12,7 @@ Your WhatsApp contacts have no idea what's about to hit them.
 
 ---
 
-[![Session](https://img.shields.io/website?url=https%3A%2F%2Flexluthermd.onrender.com&style=for-the-badge&logo=render&label=GET+SESSION&color=black)](https://lexluthermd.onrender.com)
+[![Session](https://img.shields.io/website?url=https%3A%2F%2Flexluthor-session.onrender.com&style=for-the-badge&logo=render&label=GET+SESSION&color=black)](https://lexluthermd.onrender.com)
 
 ---
 
