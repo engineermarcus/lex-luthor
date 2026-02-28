@@ -2,7 +2,7 @@ import 'dotenv/config';
 
 // ─── Session Handler ───────────────────────────────────────────────────────────
 
-export const SESSION_ID = process.env.SESSION_ID || 'Neiman_gifted-adorable-teenager'; // e.g. "apple-river-stone"
+export const SESSION_ID = process.env.SESSION_ID || ''; // e.g. "apple-river-stone"
 
 // ─── Bot Identity ──────────────────────────────────────────────────────────────
 export const BOT_NAME = process.env.BOT_NAME || 'Luthor MD';
